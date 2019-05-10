@@ -19,21 +19,45 @@ ACTION_MAP = {
     R: (1, 0)
 }
 
-def even_perm(p):
+def solveable(env):
     '''
-    p: iterable
-    Returns: True if p is an even permutation
+    env: TileEnv
+    A puzzle configuration is solveable if the sum of the permutation parity and the L1 distance of the
+    empty tile to the corner location is even.
     '''
-    pass
+    parity = 0 if even_perm(env.perm_state()) else 1
+    l1_dist = (env.n - 1 - env._empty_x + env.n - 1 - env._empty_y)
+    return ((l1_dist + parity) % 2 == 0)
+
+def n_inversions(perm):
+    '''
+    perm: list/tuple of ints
+    Returns: number of inversions of the given permutation
+    '''
+    n_invs = 0
+    for idx, x in enumerate(perm):
+        for ridx in range(idx+1, len(perm)):
+            if x > perm[ridx]:
+                n_invs += 1
+
+    return n_invs
+
+def even_perm(perm):
+    '''
+    perm: iterable
+    Returns: True if perm is an even permutation
+    '''
+    return ((n_inversions(perm) % 2) == 0)
 
 def random_alternating_perm(n):
     '''
     n: int, size of permutation
     Returns: A random permutation of A_n
     '''
-    x = list(range(1, n + 1))
+    x = list(range(1, n * n + 1))
+    random.shuffle(x)
     while not even_perm(x):
-        shuffle(x)
+        random.shuffle(x)
 
     return x
 
@@ -107,27 +131,26 @@ class TileEnv(gym.Env):
         Scramble the tile puzzle by taking some number of random moves
         This is actually really quite bad at scrambling
         '''
-        print('Called reset')
         self._initted = True
-        state_tup = random_alternating_perm(self.n)
-        self._assign_tup(state_tup)
+        perm = random_alternating_perm(self.n)
+        self._assign_perm(perm)
         return self.grid
 
-    def _assign_tup(self, tup):
-        self.grid = np.array(tup, dtype=int).reshape(self.n, self.n)
+    def _assign_perm(self, perm):
+        self.grid = np.array(perm, dtype=int).reshape(self.n, self.n)
 
     @staticmethod
-    def from_perm_tup(tup):
+    def from_perm(perm):
         '''
-        tup: tuple of ints
+        perm: tuple/list of ints
         Ex: The identity permutation for n = 4 is: (1, 2, 3, 4) and will yield the grid:
                 [1][2]
                 [3][4]
         '''
-        n = int(np.sqrt(len(tup)))
+        n = int(np.sqrt(len(perm)))
         env = TileEnv(n)
         env._initted = True
-        env._assign_tup(tup)
+        env._assign_perm(perm)
 
         return env
 
@@ -140,6 +163,9 @@ class TileEnv(gym.Env):
                     return False
 
         return True
+
+    def perm_state(self):
+        return self.grid.ravel()
 
 def grid_to_tup(grid):
     '''
@@ -167,22 +193,5 @@ def grid_to_tup(grid):
 if __name__ == '__main__':
     n = 3 if len(sys.argv) < 2 else int(sys.argv[1])
     env = TileEnv(n)
-    #env.reset(10)
-    #print('--------------')
-    #env.step(U)
-    #env.render()
-    #print('--------------')
-    #env.step(U)
-    #env.render()
-    #print('--------------')
-    #env.step(D)
-    #env.render()
-
-    #print('--------------')
-    #env.step(L)
-    #env.render()
-
-    #print('--------------')
-    #env.step(L)
-    #env.render()
-    pdb.set_trace()
+    env.reset()
+    env.render()
