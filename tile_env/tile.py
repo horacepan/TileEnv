@@ -167,6 +167,17 @@ class TileEnv(gym.Env):
     def perm_state(self):
         return self.grid.ravel()
 
+    def one_hot_state(self):
+        vec = np.zeros(self.grid.size * self.grid.size)
+        idx = 0
+        for i in range(self.n):
+            for j in range(self.n):
+                num = self.grid[i, j] - 1 # grid is 1-indexed
+                vec[idx + num] = 1
+                idx += self.grid.size
+
+        return vec
+
 def grid_to_tup(grid):
     '''
     Get the permutation tuple representation of a grid

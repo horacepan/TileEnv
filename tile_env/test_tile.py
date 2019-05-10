@@ -34,5 +34,10 @@ class TestTile(unittest.TestCase):
             env.reset()
             self.assertTrue(solveable(env))            
 
+    def test_one_hot(self):
+        env = TileEnv(4)
+        env._assign_perm(list(range(1, 16 + 1)))
+        self.assertTrue(np.allclose(np.eye(16).ravel(), env.one_hot_state()))
+
 if __name__ == '__main__':
     unittest.main()
