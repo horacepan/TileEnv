@@ -6,6 +6,6 @@ setuptools.setup(
     author="Horace Pan",
     author_email="hopan@uchicago.edu",
     description="Simple Gym Environment for Sliding Number Tile Puzzle",
-    url="https://github.com/horacepan/tile_env",
+    url="https://github.com/horacepan/TileEnv",
     packages=setuptools.find_packages(),
 )
