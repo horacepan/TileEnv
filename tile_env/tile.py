@@ -1,11 +1,9 @@
 import sys
-from enum import Enum
 import random
 from gym import spaces
 import gym
 import numpy as np
 import pdb
-from itertools import permutations
 
 U = 0
 D = 1
@@ -16,7 +14,14 @@ ACTION_MAP = {
     U: (-1, 0),
     D: (1, 0),
     L: (0, -1),
-    R: (1, 0)
+    R: (0, 1)
+}
+
+STR_ACTION_MAP = {
+    U: 'U',
+    D: 'D',
+    L: 'L',
+    R: 'R',
 }
 
 def solveable(env):
@@ -24,10 +29,21 @@ def solveable(env):
     env: TileEnv
     A puzzle configuration is solveable if the sum of the permutation parity and the L1 distance of the
     empty tile to the corner location is even.
+
+    If the grid width is odd, then the number of inversions in a solvable situation is even.
+    If the grid width is even, and the blank is on an even row counting from the bottom (second-last, fourth-last etc), then the number of inversions in a solvable situation is odd.
+    If the grid width is even, and the blank is on an odd row counting from the bottom (last, third-last, fifth-last etc) then the number of inversions in a solvable situation is even.
+
+    Source:
+    https://www.cs.bham.ac.uk/~mdr/teaching/modules04/java2/TilesSolvability.html
     '''
-    parity = 0 if even_perm(env.perm_state()) else 1
-    l1_dist = (env.n - 1 - env._empty_x + env.n - 1 - env._empty_y)
-    return ((l1_dist + parity) % 2 == 0)
+    perm = [i for i in env.perm_state() if i != (env.n * env.n)] # exclude empty tile
+    if env.n % 2 == 1:
+        return even_perm(perm)
+    else:
+        nth_from_bot = env.n - env._empty_x
+        return ((n_inversions(perm) % 2 == 1) and (nth_from_bot % 2 == 0)) or \
+               ((n_inversions(perm) % 2 == 0) and (nth_from_bot % 2 == 1))
 
 def n_inversions(perm):
     '''
@@ -49,16 +65,13 @@ def even_perm(perm):
     '''
     return ((n_inversions(perm) % 2) == 0)
 
-def random_alternating_perm(n):
+def random_perm(n):
     '''
     n: int, size of permutation
-    Returns: A random permutation of A_n
+    Returns: A random permutation of A_n (an even permutation)
     '''
-    x = list(range(1, n * n + 1))
+    x = list(range(1, n + 1))
     random.shuffle(x)
-    while not even_perm(x):
-        random.shuffle(x)
-
     return x
 
 class TileEnv(gym.Env):
@@ -79,12 +92,20 @@ class TileEnv(gym.Env):
     def _inbounds(self, x, y):
         return (0 <= x <= (self.n - 1)) and (0 <= y <= (self.n - 1))
 
-    def step(self, action, ignore_oob=True):
+    def step(self, action, ignore_oob=True, one_hot=True):
         '''
         Actions: U/D/L/R
+        ignore_oob: bool. If true, invalid moves on the boundary of the cube don't do anything.
+        one_hot: bool.
+            If true, this returns the one hot vector representation of the puzzle state
+            If false, returns the grid representation.
         Move swap the empty tile with the tile in the given location
         '''
         assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
+        try:
+            assert (self.grid[self._empty_x, self._empty_y] == (self.n * self.n))
+        except:
+            pdb.set_trace()
 
         dx, dy = ACTION_MAP[action]
         new_x = self._empty_x + dx
@@ -94,21 +115,34 @@ class TileEnv(gym.Env):
         oob = not self._inbounds(new_x, new_y)
         if oob:
             if ignore_oob:
+                print('Taking step {} moves you oob! Not moving anything'.format(STR_ACTION_MAP[action]))
                 done = self.is_solved()
                 reward = 1 if done else 0
                 return self.grid, reward, done, {}
             else:
                 raise Exception('Taking action {} will take you out of bounds'.format(action))
 
+        # TODO: Make one hot state the default and construct grid only for rendering
         self.grid[new_x, new_y], self.grid[self._empty_x, self._empty_y] = self.grid[self._empty_x, self._empty_y], self.grid[new_x, new_y]
         self._empty_x = new_x
         self._empty_y = new_y
-
         done = self.is_solved()
         reward = 1 if done else 0
-        return self.grid, reward, done, {}
+        if one_hot:
+            state = self.one_hot_state()
+        else:
+            state = self.grid
 
-    def _pp(self, x):
+        assert (self.grid[self._empty_x, self._empty_y] == (self.n * self.n))
+        return state, reward, done, {}
+
+    def penalty_reward(self, done=None):
+        return 1 if self.is_solved() else -1
+
+    def sparse_reward(self):
+        return 1 if self.is_solved() else 0
+
+    def _pretty_print(self, x):
         if self.n <= 3:
             if x != (self.n * self.n):
                 return '[{}]'.format(x)
@@ -123,21 +157,28 @@ class TileEnv(gym.Env):
         for r in range(self.n):
             row = self.grid[r, :]
             for x in row:
-                print(self._pp(x), end='')
+                print(self._pretty_print(x), end='')
             print()
 
-    def reset(self, nmoves=1000):
+    def reset(self):
         '''
         Scramble the tile puzzle by taking some number of random moves
         This is actually really quite bad at scrambling
         '''
         self._initted = True
-        perm = random_alternating_perm(self.n)
-        self._assign_perm(perm)
+        self._assign_perm(random_perm(self.n * self.n))
+
+        while not solveable(self):
+            self._assign_perm(random_perm(self.n * self.n))
+
+        assert (self.grid[self._empty_x, self._empty_y] == (self.n * self.n))
         return self.grid
 
     def _assign_perm(self, perm):
         self.grid = np.array(perm, dtype=int).reshape(self.n, self.n)
+        empty_loc = np.where(self.grid == (self.n * self.n))
+        self._empty_x, self._empty_y = empty_loc[0][0], empty_loc[1][0]
+
 
     @staticmethod
     def from_perm(perm):
@@ -151,7 +192,6 @@ class TileEnv(gym.Env):
         env = TileEnv(n)
         env._initted = True
         env._assign_perm(perm)
-
         return env
 
     def is_solved(self):
@@ -202,7 +242,17 @@ def grid_to_tup(grid):
             locs[x - 1] = idx
 
 if __name__ == '__main__':
+    random.seed(1)
     n = 3 if len(sys.argv) < 2 else int(sys.argv[1])
     env = TileEnv(n)
     env.reset()
+    env.render()
+    print('------------------')
+    env.step(U)
+    env.render()
+    print('------------------')
+    env.step(U)
+    env.render()
+    print('------------------')
+    env.step(U)
     env.render()
