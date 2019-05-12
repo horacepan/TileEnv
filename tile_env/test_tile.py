@@ -72,5 +72,20 @@ class TestTile(unittest.TestCase):
         env = TileEnv.from_perm([3, 9, 1, 15, 14, 11, 4, 6, 13, 16, 10, 12, 2, 7, 8, 5])
         self.assertFalse(solveable(env))
 
+    def test_is_solved(self):
+        env = TileEnv.from_perm(list(i for i in range(1, 17)))
+        self.assertTrue(env.is_solved())
+
+        env = TileEnv.from_perm([1, 3, 2, 4])
+        self.assertFalse(env.is_solved())
+
+        env = TileEnv.from_perm([1, 3, 2, 4, 5, 7, 6, 9, 8])
+        self.assertFalse(env.is_solved())
+
+        env = TileEnv.from_perm([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 15])
+        self.assertFalse(env.is_solved())
+        env.step(R)
+        self.assertTrue(env.is_solved())
+
 if __name__ == '__main__':
     unittest.main()

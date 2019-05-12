@@ -152,7 +152,6 @@ class TileEnv(gym.Env):
                 return '[{:2}]'.format(x)
             return '[__]'
 
-
     def render(self):
         for r in range(self.n):
             row = self.grid[r, :]
@@ -179,7 +178,6 @@ class TileEnv(gym.Env):
         empty_loc = np.where(self.grid == (self.n * self.n))
         self._empty_x, self._empty_y = empty_loc[0][0], empty_loc[1][0]
 
-
     @staticmethod
     def from_perm(perm):
         '''
@@ -201,6 +199,7 @@ class TileEnv(gym.Env):
             for j in range(self.n):
                 if self.grid[i, j] != idx:
                     return False
+                idx += 1
 
         return True
 
