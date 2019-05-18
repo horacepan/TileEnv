@@ -75,10 +75,17 @@ def random_perm(n):
     return x
 
 class TileEnv(gym.Env):
-    def __init__(self, n):
+    def __init__(self, n, one_hot=True):
         self.grid = np.array([i+1 for i in range(n * n)], dtype=int).reshape(n, n)
         self.n = n
+        self.one_hot = True
         self.action_space = spaces.Discrete(4)
+
+        if one_hot:
+            self.observation_space = spaces.Box(low=0, high=1, shape=(n*n,))
+        else:
+            self.observation_space = spaces.Box(low=0, high=1, shape=(n, n))
+
 
         self._initted = False
         self._empty_x = n - 1
@@ -128,10 +135,7 @@ class TileEnv(gym.Env):
         self._empty_y = new_y
         done = self.is_solved()
         reward = 1 if done else 0
-        if one_hot:
-            state = self.one_hot_state()
-        else:
-            state = self.grid
+        state = self._get_state()
 
         assert (self.grid[self._empty_x, self._empty_y] == (self.n * self.n))
         return state, reward, done, {}
@@ -159,6 +163,12 @@ class TileEnv(gym.Env):
                 print(self._pretty_print(x), end='')
             print()
 
+    def _get_state(self):
+        if self.one_hot:
+            return self.one_hot_state()
+        else:
+            return self.grid
+
     def reset(self):
         '''
         Scramble the tile puzzle by taking some number of random moves
@@ -171,7 +181,7 @@ class TileEnv(gym.Env):
             self._assign_perm(random_perm(self.n * self.n))
 
         assert (self.grid[self._empty_x, self._empty_y] == (self.n * self.n))
-        return self.grid
+        return self._get_state()
 
     def _assign_perm(self, perm):
         self.grid = np.array(perm, dtype=int).reshape(self.n, self.n)
