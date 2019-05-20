@@ -82,7 +82,7 @@ class TileEnv(gym.Env):
         self.action_space = spaces.Discrete(4)
 
         if one_hot:
-            self.observation_space = spaces.Box(low=0, high=1, shape=(n*n,))
+            self.observation_space = spaces.Box(low=0, high=1, shape=(n*n*n*n,))
         else:
             self.observation_space = spaces.Box(low=0, high=1, shape=(n, n))
 
@@ -99,7 +99,7 @@ class TileEnv(gym.Env):
     def _inbounds(self, x, y):
         return (0 <= x <= (self.n - 1)) and (0 <= y <= (self.n - 1))
 
-    def step(self, action, ignore_oob=True, one_hot=True):
+    def step(self, action, ignore_oob=True):
         '''
         Actions: U/D/L/R
         ignore_oob: bool. If true, invalid moves on the boundary of the cube don't do anything.
@@ -122,10 +122,10 @@ class TileEnv(gym.Env):
         oob = not self._inbounds(new_x, new_y)
         if oob:
             if ignore_oob:
-                print('Taking step {} moves you oob! Not moving anything'.format(STR_ACTION_MAP[action]))
+                #print('Taking step {} moves you oob! Not moving anything'.format(STR_ACTION_MAP[action]))
                 done = self.is_solved()
                 reward = 1 if done else 0
-                return self.grid, reward, done, {}
+                return self._get_state(), reward, done, {}
             else:
                 raise Exception('Taking action {} will take you out of bounds'.format(action))
 
