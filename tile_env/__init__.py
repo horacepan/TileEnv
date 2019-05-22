@@ -1,1 +1,1 @@
-from .tile import TileEnv
+from .tile import TileEnv, neighbors

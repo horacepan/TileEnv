@@ -9,7 +9,7 @@ U = 0
 D = 1
 L = 2
 R = 3
-
+MOVES = [U, D, L, R]
 ACTION_MAP = {
     U: (-1, 0),
     D: (1, 0),
@@ -23,6 +23,37 @@ STR_ACTION_MAP = {
     L: 'L',
     R: 'R',
 }
+
+def neighbors(grid, x=None, y=None):
+    '''
+    grid: square numpy matrix
+    x: x coord of the empty tile
+    x: y coord of the empty tile
+    Returns: list of neighbor states (grids)
+    '''
+    n = grid.shape[0]
+    if x is None and y is None:
+        empty_loc = np.where(grid == (n * n))
+        x, y = empty_loc[0][0], empty_loc[1][0]
+
+    nbrs = []
+    n = grid.shape[0]
+    for m in MOVES:
+        dx, dy = ACTION_MAP[m]
+        new_x = x + dx
+        new_y = y + dy
+        if 0 <= new_x < n and 0 <= new_y < n:
+            # continue
+            grid[x][y], grid[new_x, new_y] = grid[new_x, new_y], grid[x][y]
+            nbrs.append(grid.copy())
+            grid[x][y], grid[new_x, new_y] = grid[new_x, new_y], grid[x][y]
+        else:
+            continue
+
+    return nbrs
+
+def neighbors_env(env):
+    return neighbors(env.grid, env.x, env.y)
 
 def solveable(env):
     '''
@@ -216,6 +247,9 @@ class TileEnv(gym.Env):
     def perm_state(self):
         return self.grid.ravel()
 
+    def tup_state(self):
+        return tuple(i for row in self.grid for i in row)
+
     def one_hot_state(self):
         vec = np.zeros(self.grid.size * self.grid.size)
         idx = 0
@@ -226,6 +260,12 @@ class TileEnv(gym.Env):
                 idx += self.grid.size
 
         return vec
+
+    def valid_move(self, action):
+        dx, dy = ACTION_MAP[action]
+        new_x = self._empty_x + dx
+        new_y = self._empty_y + dy
+        return self._inbounds(new_x, new_y)
 
 def grid_to_tup(grid):
     '''
