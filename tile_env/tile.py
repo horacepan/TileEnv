@@ -9,21 +9,6 @@ U = 0
 D = 1
 L = 2
 R = 3
-MOVES = [U, D, L, R]
-ACTION_MAP = {
-    U: (-1, 0),
-    D: (1, 0),
-    L: (0, -1),
-    R: (0, 1)
-}
-
-STR_ACTION_MAP = {
-    U: 'U',
-    D: 'D',
-    L: 'L',
-    R: 'R',
-}
-
 def neighbors(grid, x=None, y=None):
     '''
     grid: square numpy matrix
@@ -39,7 +24,7 @@ def neighbors(grid, x=None, y=None):
     nbrs = []
     n = grid.shape[0]
     for m in MOVES:
-        dx, dy = ACTION_MAP[m]
+        dx, dy = TileEnv.ACTION_MAP[m]
         new_x = x + dx
         new_y = y + dy
         if 0 <= new_x < n and 0 <= new_y < n:
@@ -52,7 +37,7 @@ def neighbors(grid, x=None, y=None):
 
     return nbrs
 
-def neighbors_env(env):
+def env_neighbors(env):
     return neighbors(env.grid, env.x, env.y)
 
 def solveable(env):
@@ -106,10 +91,30 @@ def random_perm(n):
     return x
 
 class TileEnv(gym.Env):
+    U = 0
+    D = 1
+    L = 2
+    R = 3
+    MOVES = [U, D, L, R]
+    ACTION_MAP = {
+        U: (-1, 0),
+        D: (1, 0),
+        L: (0, -1),
+        R: (0, 1)
+    }
+
+    STR_ACTION_MAP = {
+        U: 'U',
+        D: 'D',
+        L: 'L',
+        R: 'R',
+    }
+
+
     def __init__(self, n, one_hot=True):
         self.grid = np.array([i+1 for i in range(n * n)], dtype=int).reshape(n, n)
         self.n = n
-        self.one_hot = True
+        self.one_hot = one_hot
         self.action_space = spaces.Discrete(4)
 
         if one_hot:
@@ -121,11 +126,18 @@ class TileEnv(gym.Env):
         self._initted = False
         self._empty_x = n - 1
         self._empty_y = n - 1
-        self.reset()
 
     @property
     def actions(self):
         return self.action_space.n
+
+    @property
+    def x(self):
+        return self._empty_x
+
+    @property
+    def y(self):
+        return self._empty_x
 
     def _inbounds(self, x, y):
         return (0 <= x <= (self.n - 1)) and (0 <= y <= (self.n - 1))
@@ -145,7 +157,7 @@ class TileEnv(gym.Env):
         except:
             pdb.set_trace()
 
-        dx, dy = ACTION_MAP[action]
+        dx, dy = TileEnv.ACTION_MAP[action]
         new_x = self._empty_x + dx
         new_y = self._empty_y + dy
 
@@ -153,7 +165,7 @@ class TileEnv(gym.Env):
         oob = not self._inbounds(new_x, new_y)
         if oob:
             if ignore_oob:
-                #print('Taking step {} moves you oob! Not moving anything'.format(STR_ACTION_MAP[action]))
+                #print('Taking step {} moves you oob! Not moving anything'.format(TileEnv.STR_ACTION_MAP[action]))
                 done = self.is_solved()
                 reward = 1 if done else 0
                 return self._get_state(), reward, done, {}
@@ -220,7 +232,7 @@ class TileEnv(gym.Env):
         self._empty_x, self._empty_y = empty_loc[0][0], empty_loc[1][0]
 
     @staticmethod
-    def from_perm(perm):
+    def from_perm(perm, one_hot=True):
         '''
         perm: tuple/list of ints
         Ex: The identity permutation for n = 4 is: (1, 2, 3, 4) and will yield the grid:
@@ -228,7 +240,7 @@ class TileEnv(gym.Env):
                 [3][4]
         '''
         n = int(np.sqrt(len(perm)))
-        env = TileEnv(n)
+        env = TileEnv(n, one_hot)
         env._initted = True
         env._assign_perm(perm)
         return env
@@ -261,11 +273,38 @@ class TileEnv(gym.Env):
 
         return vec
 
-    def valid_move(self, action):
-        dx, dy = ACTION_MAP[action]
-        new_x = self._empty_x + dx
-        new_y = self._empty_y + dy
-        return self._inbounds(new_x, new_y)
+    @staticmethod
+    def valid_move(action, grid, x=None, y=None):
+        if x is None and y is None:
+            empty_loc = np.where(grid == (n * n))
+            x, y = empty_loc[0][0], empty_loc[1][0]
+
+        dx, dy = TileEnv.ACTION_MAP[action]
+        new_x = x + dx
+        new_y = y + dy
+        return (0 <= new_x < n) and (0 <= new_y < n)
+
+    def _valid_move(self, action):
+        return TileEnv.valid_move(action, self.grid, self.x, self.y)
+
+    # TODO: this is basically a copy of neighbors above. Consolidate
+    def neighbors(self):
+        # neighbors should only be valid moves?
+        nbrs = {}
+        x, y = self.x, self.y
+
+        for a in TileEnv.MOVES:
+            dx, dy = TileEnv.ACTION_MAP[a]
+            new_x = x + dx
+            new_y = y + dy
+            valid_move = (0 <= new_x < self.n) and (0 <= new_y < self.n)
+
+            if valid_move:
+                self.grid[x][y], self.grid[new_x, new_y] = self.grid[new_x, new_y], self.grid[x][y]
+                nbrs[a] = self.grid.copy()
+                self.grid[x][y], self.grid[new_x, new_y] = self.grid[new_x, new_y], self.grid[x][y]
+
+        return nbrs
 
 def grid_to_tup(grid):
     '''

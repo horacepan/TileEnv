@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 from tile import even_perm, random_perm, solveable, TileEnv
-from tile import U, D, L, R
 import pdb
 
 class TestTile(unittest.TestCase):
@@ -36,15 +35,15 @@ class TestTile(unittest.TestCase):
 
     def test_moves(self):
         env = TileEnv.from_perm([1, 2, 3, 4, 5, 6, 7, 8, 9])
-        env.step(U)
+        env.step(TileEnv.U)
         self.assertTrue(np.allclose(env.grid, np.array([[1, 2, 3], [4, 5, 9], [7, 8, 6]])))
-        env.step(L)
+        env.step(TileEnv.L)
         self.assertTrue(np.allclose(env.grid, np.array([[1, 2, 3], [4, 9, 5], [7, 8, 6]])))
-        env.step(L)
+        env.step(TileEnv.L)
         self.assertTrue(np.allclose(env.grid, np.array([[1, 2, 3], [9, 4, 5], [7, 8, 6]])))
-        env.step(D)
+        env.step(TileEnv.D)
         self.assertTrue(np.allclose(env.grid, np.array([[1, 2, 3], [7, 4, 5], [9, 8, 6]])))
-        env.step(R)
+        env.step(TileEnv.R)
         self.assertTrue(np.allclose(env.grid, np.array([[1, 2, 3], [7, 4, 5], [8, 9, 6]])))
 
     def test_solveable(self):
@@ -84,8 +83,21 @@ class TestTile(unittest.TestCase):
 
         env = TileEnv.from_perm([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 15])
         self.assertFalse(env.is_solved())
-        env.step(R)
+        env.step(TileEnv.R)
         self.assertTrue(env.is_solved())
+
+    def test_neighbors(self):
+        env = TileEnv.from_perm((1, 2, 3, 4), one_hot=False)
+        nbrs = env.neighbors()
+        self.assertTrue(TileEnv.U in nbrs)
+        self.assertTrue(TileEnv.D not in nbrs)
+        self.assertTrue(TileEnv.L in nbrs)
+        self.assertTrue(TileEnv.R not in nbrs)
+
+        ugrid = np.array([[1, 4], [3, 2]])
+        lgrid = np.array([[1, 2], [4, 3]])
+        self.assertTrue(np.allclose(nbrs[TileEnv.U], ugrid))
+        self.assertTrue(np.allclose(nbrs[TileEnv.L], lgrid))
 
 if __name__ == '__main__':
     unittest.main()
