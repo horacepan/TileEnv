@@ -1,3 +1,4 @@
+import pandas as pd
 import sys
 import random
 from gym import spaces
@@ -134,7 +135,7 @@ class TileEnv(gym.Env):
 
     @property
     def y(self):
-        return self._empty_x
+        return self._empty_y
 
     def _inbounds(self, x, y):
         return (0 <= x <= (self.n - 1)) and (0 <= y <= (self.n - 1))
@@ -229,7 +230,24 @@ class TileEnv(gym.Env):
         assert (self.grid[self._empty_x, self._empty_y] == (self.n * self.n))
         return self._get_state()
 
+    def shuffle(self, nsteps):
+        '''
+        nsteps: int
+        Resets the state to a random state by taking {nsteps} random moves from the solved state
+        '''
+        ident_perm = tuple(i for i in range(1, self.n * self.n + 1))
+        self._assign_perm(ident_perm)
+        for _ in range(nsteps):
+            valid_moves = list(self.neighbors().keys())
+            action = random.choice(valid_moves)
+            self.step(action)
+
     def _assign_perm(self, perm):
+        '''
+        perm: list or tuple representation of a S_{n*n} permutation.
+        Assigns the grid state to the given permutation.
+        This also properly sets the empty_x and empty_y positions.
+        '''
         self.grid = np.array(perm, dtype=int).reshape(self.n, self.n)
         empty_loc = np.where(self.grid == (self.n * self.n))
         self._empty_x, self._empty_y = empty_loc[0][0], empty_loc[1][0]
@@ -336,14 +354,5 @@ if __name__ == '__main__':
     random.seed(1)
     n = 3 if len(sys.argv) < 2 else int(sys.argv[1])
     env = TileEnv(n)
-    env.reset()
-    env.render()
-    print('------------------')
-    env.step(U)
-    env.render()
-    print('------------------')
-    env.step(U)
-    env.render()
-    print('------------------')
-    env.step(U)
+    env.shuffle(200)
     env.render()
