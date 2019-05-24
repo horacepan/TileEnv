@@ -5,10 +5,6 @@ import gym
 import numpy as np
 import pdb
 
-U = 0
-D = 1
-L = 2
-R = 3
 def neighbors(grid, x=None, y=None):
     '''
     grid: square numpy matrix
@@ -23,7 +19,7 @@ def neighbors(grid, x=None, y=None):
 
     nbrs = []
     n = grid.shape[0]
-    for m in MOVES:
+    for m in TileEnv.MOVES:
         dx, dy = TileEnv.ACTION_MAP[m]
         new_x = x + dx
         new_y = y + dy
