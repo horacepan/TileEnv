@@ -107,11 +107,12 @@ class TileEnv(gym.Env):
     }
 
 
-    def __init__(self, n, one_hot=True):
+    def __init__(self, n, one_hot=True, reward="sparse"):
         self.grid = np.array([i+1 for i in range(n * n)], dtype=int).reshape(n, n)
         self.n = n
         self.one_hot = one_hot
         self.action_space = spaces.Discrete(4)
+        self.reward = reward
 
         if one_hot:
             self.observation_space = spaces.Box(low=0, high=1, shape=(n*n*n*n,))
@@ -138,6 +139,12 @@ class TileEnv(gym.Env):
     def _inbounds(self, x, y):
         return (0 <= x <= (self.n - 1)) and (0 <= y <= (self.n - 1))
 
+    def get_reward(self):
+        if self.reward == "sparse":
+            return self.sparse_reward()
+        else:
+            return self.penalty_reward()
+
     def step(self, action, ignore_oob=True):
         '''
         Actions: U/D/L/R
@@ -163,7 +170,7 @@ class TileEnv(gym.Env):
             if ignore_oob:
                 #print('Taking step {} moves you oob! Not moving anything'.format(TileEnv.STR_ACTION_MAP[action]))
                 done = self.is_solved()
-                reward = 1 if done else 0
+                reward = self.get_reward()
                 return self._get_state(), reward, done, {}
             else:
                 raise Exception('Taking action {} will take you out of bounds'.format(action))
@@ -173,7 +180,7 @@ class TileEnv(gym.Env):
         self._empty_x = new_x
         self._empty_y = new_y
         done = self.is_solved()
-        reward = 1 if done else 0
+        reward = self.get_reward()
         state = self._get_state()
 
         assert (self.grid[self._empty_x, self._empty_y] == (self.n * self.n))
