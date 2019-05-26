@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from tile import even_perm, random_perm, solveable, TileEnv
+from tile import even_perm, random_perm, solveable, TileEnv, neighbors
 import pdb
 
 class TestTile(unittest.TestCase):
@@ -98,6 +98,18 @@ class TestTile(unittest.TestCase):
         lgrid = np.array([[1, 2], [4, 3]])
         self.assertTrue(np.allclose(nbrs[TileEnv.U], ugrid))
         self.assertTrue(np.allclose(nbrs[TileEnv.L], lgrid))
+
+    def test_neighbors2(self):
+        env = TileEnv(3)
+        for _ in range(10):
+            env.shuffle(100)
+            static_nbrs = neighbors(env.grid, env.x, env.y)
+            nbrs = env.neighbors()
+            for a, grid in nbrs.items():
+                try:
+                    self.assertTrue(np.allclose(static_nbrs[a], grid))
+                except:
+                    pdb.set_trace()
 
 if __name__ == '__main__':
     unittest.main()

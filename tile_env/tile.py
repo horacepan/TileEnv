@@ -18,7 +18,7 @@ def neighbors(grid, x=None, y=None):
         empty_loc = np.where(grid == (n * n))
         x, y = empty_loc[0][0], empty_loc[1][0]
 
-    nbrs = []
+    nbrs = {}
     n = grid.shape[0]
     for m in TileEnv.MOVES:
         dx, dy = TileEnv.ACTION_MAP[m]
@@ -27,7 +27,7 @@ def neighbors(grid, x=None, y=None):
         if 0 <= new_x < n and 0 <= new_y < n:
             # continue
             grid[x][y], grid[new_x, new_y] = grid[new_x, new_y], grid[x][y]
-            nbrs.append(grid.copy())
+            nbrs[m] = grid.copy()
             grid[x][y], grid[new_x, new_y] = grid[new_x, new_y], grid[x][y]
         else:
             continue
@@ -120,9 +120,24 @@ class TileEnv(gym.Env):
         else:
             self.observation_space = spaces.Box(low=0, high=1, shape=(n, n))
 
-
         self._empty_x = n - 1
         self._empty_y = n - 1
+        self._valid_move_cache = self._init_valid_moves()
+
+    def _init_valid_moves(self):
+        valid = {}
+        for i in range(self.n):
+            for j in range(self.n):
+                moves = []
+                for m in TileEnv.MOVES:
+                    dx, dy = TileEnv.ACTION_MAP[m]
+                    new_x = i + dx
+                    new_y = j + dy
+                    if (0 <= new_x < self.n) and (0 <= new_y < self.n):
+                        moves.append(m)
+
+                valid[(i, j)] = moves
+        return valid
 
     @property
     def actions(self):
@@ -312,7 +327,8 @@ class TileEnv(gym.Env):
         return TileEnv.valid_move(action, self.grid, self.x, self.y)
 
     def valid_moves(self):
-        return [m for m in TileEnv.MOVES if self._valid_move(m)]
+        #moves = [m for m in TileEnv.MOVES if self._valid_move(m)]
+        return self._valid_move_cache[(self.x, self.y)]
 
     # TODO: this is basically a copy of neighbors above. Consolidate
     def neighbors(self):
