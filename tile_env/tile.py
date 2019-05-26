@@ -121,7 +121,6 @@ class TileEnv(gym.Env):
             self.observation_space = spaces.Box(low=0, high=1, shape=(n, n))
 
 
-        self._initted = False
         self._empty_x = n - 1
         self._empty_y = n - 1
 
@@ -136,6 +135,12 @@ class TileEnv(gym.Env):
     @property
     def y(self):
         return self._empty_y
+
+    @staticmethod
+    def solved_grid(n):
+        contents = range(1, n*n + 1)
+        grid = np.array(contents).reshape(n, n)
+        return grid
 
     def _inbounds(self, x, y):
         return (0 <= x <= (self.n - 1)) and (0 <= y <= (self.n - 1))
@@ -221,7 +226,6 @@ class TileEnv(gym.Env):
         Scramble the tile puzzle by taking some number of random moves
         This is actually really quite bad at scrambling
         '''
-        self._initted = True
         self._assign_perm(random_perm(self.n * self.n))
 
         while not solveable(self):
@@ -238,8 +242,7 @@ class TileEnv(gym.Env):
         ident_perm = tuple(i for i in range(1, self.n * self.n + 1))
         self._assign_perm(ident_perm)
         for _ in range(nsteps):
-            valid_moves = list(self.neighbors().keys())
-            action = random.choice(valid_moves)
+            action = random.choice(self.valid_moves())
             self.step(action)
 
     def _assign_perm(self, perm):
@@ -262,7 +265,6 @@ class TileEnv(gym.Env):
         '''
         n = int(np.sqrt(len(perm)))
         env = TileEnv(n, one_hot)
-        env._initted = True
         env._assign_perm(perm)
         return env
 
@@ -296,6 +298,7 @@ class TileEnv(gym.Env):
 
     @staticmethod
     def valid_move(action, grid, x=None, y=None):
+        n = grid.shape[0]
         if x is None and y is None:
             empty_loc = np.where(grid == (n * n))
             x, y = empty_loc[0][0], empty_loc[1][0]
@@ -308,22 +311,23 @@ class TileEnv(gym.Env):
     def _valid_move(self, action):
         return TileEnv.valid_move(action, self.grid, self.x, self.y)
 
+    def valid_moves(self):
+        return [m for m in TileEnv.MOVES if self._valid_move(m)]
+
     # TODO: this is basically a copy of neighbors above. Consolidate
     def neighbors(self):
         # neighbors should only be valid moves?
         nbrs = {}
         x, y = self.x, self.y
 
-        for a in TileEnv.MOVES:
-            dx, dy = TileEnv.ACTION_MAP[a]
+        for m in self.valid_moves():
+            dx, dy = TileEnv.ACTION_MAP[m]
             new_x = x + dx
             new_y = y + dy
-            valid_move = (0 <= new_x < self.n) and (0 <= new_y < self.n)
 
-            if valid_move:
-                self.grid[x][y], self.grid[new_x, new_y] = self.grid[new_x, new_y], self.grid[x][y]
-                nbrs[a] = self.grid.copy()
-                self.grid[x][y], self.grid[new_x, new_y] = self.grid[new_x, new_y], self.grid[x][y]
+            self.grid[x][y], self.grid[new_x, new_y] = self.grid[new_x, new_y], self.grid[x][y]
+            nbrs[m] = self.grid.copy()
+            self.grid[x][y], self.grid[new_x, new_y] = self.grid[new_x, new_y], self.grid[x][y]
 
         return nbrs
 
