@@ -130,5 +130,12 @@ class TestTile(unittest.TestCase):
             perm2 = onehot_to_tup(onehot)
             self.assertTrue(perm2 == perm)
 
+    def test_grid_to_tup(self):
+        for _ in range(10):
+            perm = tuple(random_perm(16))
+            grid = tup_to_grid(perm)
+            perm2 = grid_to_tup(grid)
+            self.assertTrue(perm, perm2)
+
 if __name__ == '__main__':
     unittest.main()

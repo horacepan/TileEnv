@@ -409,24 +409,25 @@ def grid_to_tup(grid):
     [4, 2]
     [1, 3]
     '''
-    locs = [0] * grid.size
-
-    for i in range(len(grid)):
-        for j in range(len(grid)):
-            x = grid[i, j]
-            idx = (i * n) + j
-            locs[x - 1] = idx
+    return tuple(i for row in grid for i in row)
 
 def tup_to_onehot(tup):
-    try:
-        n = len(tup)
-    except:
-        pdb.set_trace()
-    onehot = np.zeros(n * n)
+    n = len(tup)
+    onehot = np.zeros(n * n).astype(int)
     for i in range(n):
         val = tup[i] - 1
         onehot[i*n + val] = 1
     return onehot
+
+def tup_to_grid(tup):
+    n = int(np.sqrt(len(tup)))
+    grid = np.zeros((n, n)).astype(int)
+    idx = 0
+    for i in range(n):
+        for j in range(n):
+            grid[i, j] = tup[idx]
+            idx += 1
+    return grid
 
 def onehot_to_tup(onehot):
     n = int(np.sqrt(onehot.size))
