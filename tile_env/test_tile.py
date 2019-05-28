@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from tile import even_perm, random_perm, solveable, TileEnv, neighbors
+from tile import *
 import pdb
 
 class TestTile(unittest.TestCase):
@@ -31,7 +31,10 @@ class TestTile(unittest.TestCase):
 
     def test_one_hot(self):
         env = TileEnv.from_perm(list(range(1, 16 + 1)))
-        self.assertTrue(np.allclose(np.eye(16).ravel(), env.one_hot_state()))
+        self.assertTrue(np.allclose(np.eye(16).ravel(), grid_to_onehot(env.grid)))
+        grid = np.array([[1, 3], [4, 2]])
+        onehot = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 1, 0, 0]]).reshape(16)
+        self.assertTrue(np.allclose(onehot, grid_to_onehot(grid)))
 
     def test_moves(self):
         env = TileEnv.from_perm([1, 2, 3, 4, 5, 6, 7, 8, 9])
@@ -110,6 +113,22 @@ class TestTile(unittest.TestCase):
                     self.assertTrue(np.allclose(static_nbrs[a], grid))
                 except:
                     pdb.set_trace()
+
+    def test_tup_to_onehot(self):
+        tup = (1, 2, 4, 3)
+        onehot = np.array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0])
+        self.assertTrue(np.allclose(tup_to_onehot(tup), onehot))
+
+    def test_onehot_to_tup(self):
+        onehot = np.array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0])
+        tup = (1, 2, 4, 3)
+        self.assertTrue(np.allclose(onehot_to_tup(onehot), tup))
+
+        for _ in range(10):
+            perm = tuple(random_perm(16))
+            onehot = tup_to_onehot(perm)
+            perm2 = onehot_to_tup(onehot)
+            self.assertTrue(perm2 == perm)
 
 if __name__ == '__main__':
     unittest.main()

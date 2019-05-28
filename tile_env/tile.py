@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 import sys
 import random
@@ -86,6 +87,21 @@ def random_perm(n):
     x = list(range(1, n + 1))
     random.shuffle(x)
     return x
+
+def grid_to_onehot(grid):
+    '''
+    Converts a n x n numpy matrix to a onehot representation of it.
+    '''
+    vec = np.zeros(grid.size * grid.size)
+    idx = 0
+    n = grid.shape[0]
+    for i in range(n):
+        for j in range(n):
+            num = grid[i, j] - 1 # grid is 1-indexed
+            vec[idx + num] = 1
+            idx += grid.size
+
+    return vec
 
 class TileEnv(gym.Env):
     U = 0
@@ -232,7 +248,7 @@ class TileEnv(gym.Env):
 
     def _get_state(self):
         if self.one_hot:
-            return self.one_hot_state()
+            return grid_to_onehot(self.grid)
         else:
             return self.grid
 
@@ -256,9 +272,16 @@ class TileEnv(gym.Env):
         '''
         ident_perm = tuple(i for i in range(1, self.n * self.n + 1))
         self._assign_perm(ident_perm)
+        states = [(self.grid, grid_to_onehot(self.grid), self.x, self.y)] # always start at the solved state?
+
         for _ in range(nsteps):
             action = random.choice(self.valid_moves())
-            self.step(action)
+            state, _, _, _ = self.step(action)
+            grid_state = self.grid.copy()
+            onehot_state = grid_to_onehot(self.grid)
+            states.append((grid_state, onehot_state, self.x, self.y))
+
+        return states
 
     def _assign_perm(self, perm):
         '''
@@ -283,6 +306,25 @@ class TileEnv(gym.Env):
         env._assign_perm(perm)
         return env
 
+    @staticmethod
+    def static_is_solved(grid):
+        n = grid.shape[0]
+        idx = 1
+        for i in range(n):
+            for j in range(n):
+                if grid[i, j] != idx:
+                    return False
+                idx += 1
+
+        return True
+
+    @staticmethod
+    def is_solved_perm(tup):
+        for i in range(1, len(tup) + 1):
+            if tup[i] != i:
+                return False
+        return True
+
     def is_solved(self):
         # 1-indexed
         idx = 1
@@ -299,17 +341,6 @@ class TileEnv(gym.Env):
 
     def tup_state(self):
         return tuple(i for row in self.grid for i in row)
-
-    def one_hot_state(self):
-        vec = np.zeros(self.grid.size * self.grid.size)
-        idx = 0
-        for i in range(self.n):
-            for j in range(self.n):
-                num = self.grid[i, j] - 1 # grid is 1-indexed
-                vec[idx + num] = 1
-                idx += self.grid.size
-
-        return vec
 
     @staticmethod
     def valid_move(action, grid, x=None, y=None):
@@ -347,6 +378,22 @@ class TileEnv(gym.Env):
 
         return nbrs
 
+    # TODO: Should this be a static method?
+    def peek(self, grid_state, x, y, action):
+        n = grid_state.shape[0]
+        dx, dy = TileEnv.ACTION_MAP[action]
+        new_x = x + dx
+        new_y = y + dy
+        new_grid = grid_state.copy()
+        if ((0 <= new_x < n) and (0 <= new_y < n)):
+            new_grid[x][y], new_grid[new_x][new_y] = new_grid[new_x][new_y], new_grid[x][y]
+        else:
+            pass
+
+        done = TileEnv.static_is_solved(new_grid)
+        reward = -1 if not done else 1 # TODO: this is janky
+        return new_grid, reward, done, {'onehot': grid_to_onehot(new_grid)}
+
 def grid_to_tup(grid):
     '''
     Get the permutation tuple representation of a grid
@@ -370,9 +417,33 @@ def grid_to_tup(grid):
             idx = (i * n) + j
             locs[x - 1] = idx
 
+def tup_to_onehot(tup):
+    try:
+        n = len(tup)
+    except:
+        pdb.set_trace()
+    onehot = np.zeros(n * n)
+    for i in range(n):
+        val = tup[i] - 1
+        onehot[i*n + val] = 1
+    return onehot
+
+def onehot_to_tup(onehot):
+    n = int(np.sqrt(onehot.size))
+    vals = []
+    for idx, i in enumerate(np.where(onehot == 1)[0]):
+        vals.append(i + 1 - (idx * n))
+    return tuple(vals)
+
+def test_peek():
+    env = TileEnv(2)
+    env._assign_perm([[1,2], [4,3]])
+    ns, rew, done, _ = env.peek(env.grid, env.x, env.y, TileEnv.R)
+    print(done)
+
 if __name__ == '__main__':
-    random.seed(1)
-    n = 3 if len(sys.argv) < 2 else int(sys.argv[1])
+    test_peek()
+    n = 3
     env = TileEnv(n)
     env.shuffle(200)
     env.render()
