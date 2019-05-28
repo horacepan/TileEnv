@@ -31,7 +31,7 @@ def neighbors(grid, x=None, y=None):
             nbrs[m] = grid.copy()
             grid[x][y], grid[new_x, new_y] = grid[new_x, new_y], grid[x][y]
         else:
-            continue
+            nbrs[m] = grid.copy()
 
     return nbrs
 
