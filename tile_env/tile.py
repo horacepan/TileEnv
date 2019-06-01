@@ -272,7 +272,7 @@ class TileEnv(gym.Env):
         '''
         ident_perm = tuple(i for i in range(1, self.n * self.n + 1))
         self._assign_perm(ident_perm)
-        states = [(self.grid, self.x, self.y)] # always start at the solved state?
+        states = [(self.grid.copy(), self.x, self.y)] # always start at the solved state?
 
         for _ in range(nsteps):
             action = random.choice(self.valid_moves())
@@ -356,24 +356,30 @@ class TileEnv(gym.Env):
     def _valid_move(self, action):
         return TileEnv.valid_move(action, self.grid, self.x, self.y)
 
-    def valid_moves(self):
+    def valid_moves(self, x=None, y=None):
         #moves = [m for m in TileEnv.MOVES if self._valid_move(m)]
-        return self._valid_move_cache[(self.x, self.y)]
+        if x is None:
+            x = self.x
+            y = self.y
+        return self._valid_move_cache[(x, y)]
 
     # TODO: this is basically a copy of neighbors above. Consolidate
-    def neighbors(self):
+    def neighbors(self, grid=None, x=None, y=None):
         # neighbors should only be valid moves?
         nbrs = {}
-        x, y = self.x, self.y
+        # Assume that grid that is supplied will also supply the x, y coords
+        if grid is None:
+            grid = self.grid
+            x, y = self.x, self.y
 
-        for m in self.valid_moves():
+        for m in self.valid_moves(x, y):
             dx, dy = TileEnv.ACTION_MAP[m]
             new_x = x + dx
             new_y = y + dy
 
-            self.grid[x][y], self.grid[new_x, new_y] = self.grid[new_x, new_y], self.grid[x][y]
-            nbrs[m] = self.grid.copy()
-            self.grid[x][y], self.grid[new_x, new_y] = self.grid[new_x, new_y], self.grid[x][y]
+            grid[x][y], grid[new_x, new_y] = grid[new_x, new_y], grid[x][y]
+            nbrs[m] = grid.copy()
+            grid[x][y], grid[new_x, new_y] = grid[new_x, new_y], grid[x][y]
 
         return nbrs
 
