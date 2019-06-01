@@ -272,14 +272,13 @@ class TileEnv(gym.Env):
         '''
         ident_perm = tuple(i for i in range(1, self.n * self.n + 1))
         self._assign_perm(ident_perm)
-        states = [(self.grid, grid_to_onehot(self.grid), self.x, self.y)] # always start at the solved state?
+        states = [(self.grid, self.x, self.y)] # always start at the solved state?
 
         for _ in range(nsteps):
             action = random.choice(self.valid_moves())
             state, _, _, _ = self.step(action)
             grid_state = self.grid.copy()
-            onehot_state = grid_to_onehot(self.grid)
-            states.append((grid_state, onehot_state, self.x, self.y))
+            states.append((grid_state, self.x, self.y))
 
         return states
 
