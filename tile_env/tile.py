@@ -365,12 +365,14 @@ class TileEnv(gym.Env):
 
     # TODO: this is basically a copy of neighbors above. Consolidate
     def neighbors(self, grid=None, x=None, y=None):
-        # neighbors should only be valid moves?
         nbrs = {}
-        # Assume that grid that is supplied will also supply the x, y coords
         if grid is None:
             grid = self.grid
             x, y = self.x, self.y
+        if x is None:
+            n = grid.shape[0]
+            empty_loc = np.where(grid == (n * n))
+            x, y = empty_loc[0][0], empty_loc[1][0]
 
         for m in self.valid_moves(x, y):
             dx, dy = TileEnv.ACTION_MAP[m]
