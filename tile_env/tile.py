@@ -176,11 +176,16 @@ class TileEnv(gym.Env):
     def _inbounds(self, x, y):
         return (0 <= x <= (self.n - 1)) and (0 <= y <= (self.n - 1))
 
-    def get_reward(self):
+    def get_reward(self, grid=None):
+        if grid is None:
+            grid = self.grid
+
         if self.reward == "sparse":
-            return self.sparse_reward()
-        else:
-            return self.penalty_reward()
+            return self.sparse_reward(grid)
+        elif self.reward == 'penalty':
+            return self.penalty_reward(grid)
+        elif self.reward == 'penalty_sparse':
+            return self.penalty_sparse_reward(grid)
 
     def step(self, action, ignore_oob=True):
         '''
@@ -223,11 +228,14 @@ class TileEnv(gym.Env):
         assert (self.grid[self._empty_x, self._empty_y] == (self.n * self.n))
         return state, reward, done, {}
 
-    def penalty_reward(self, done=None):
-        return 1 if self.is_solved() else -1
+    def penalty_reward(self, grid):
+        return 1 if self.is_solved(grid) else -1
 
-    def sparse_reward(self):
-        return 1 if self.is_solved() else 0
+    def penalty_sparse_reward(self, grid):
+        return 0 if self.is_solved(grid) else -1
+
+    def sparse_reward(self, grid):
+        return 1 if self.is_solved(grid) else 0
 
     def _pretty_print(self, x):
         if self.n <= 3:
@@ -324,12 +332,15 @@ class TileEnv(gym.Env):
                 return False
         return True
 
-    def is_solved(self):
+    def is_solved(self, grid=None):
         # 1-indexed
+        if grid is None:
+            grid = self.grid
         idx = 1
-        for i in range(self.n):
-            for j in range(self.n):
-                if self.grid[i, j] != idx:
+        n = grid.shape[0]
+        for i in range(n):
+            for j in range(n):
+                if grid[i, j] != idx:
                     return False
                 idx += 1
 
@@ -399,6 +410,7 @@ class TileEnv(gym.Env):
 
         done = TileEnv.static_is_solved(new_grid)
         reward = -1 if not done else 1 # TODO: this is janky
+        reward = self.get_reward(new_grid)
         return new_grid, reward, done, {'onehot': grid_to_onehot(new_grid)}
 
 def grid_to_tup(grid):
