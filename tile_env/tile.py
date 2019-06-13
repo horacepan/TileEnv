@@ -139,6 +139,8 @@ class TileEnv(gym.Env):
         self._empty_x = n - 1
         self._empty_y = n - 1
         self._valid_move_cache = self._init_valid_moves()
+        self.onehot_shape = (n * n * n * n,)
+        self.grid_shape = (n, n)
 
     def _init_valid_moves(self):
         valid = {}
